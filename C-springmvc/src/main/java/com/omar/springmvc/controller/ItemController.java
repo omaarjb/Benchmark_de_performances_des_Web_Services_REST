@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -20,23 +21,20 @@ public class ItemController {
     private ItemRepository itemRepository;
 
     @GetMapping
-    public Page<Item> getItems(
-            @RequestParam(value = "categoryId", required = false) Long categoryId,
+    public List<Item> getItems(
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "50") int size,
-            @RequestParam(value = "joinFetch", defaultValue = "false") boolean joinFetch) {
+            @RequestParam(value = "categoryId", required = false) Long categoryId) {
 
         Pageable pageable = PageRequest.of(page, size);
 
         if (categoryId != null) {
-            if (joinFetch) {
-                return itemRepository.findByCategoryIdWithJoinFetch(categoryId, pageable);
-            } else {
-                return itemRepository.findByCategoryId(categoryId, pageable);
-            }
+            Page<Item> itemsPage = itemRepository.findByCategoryId(categoryId, pageable);
+            return itemsPage.getContent(); // Retourne seulement la liste
         }
 
-        return itemRepository.findAll(pageable);
+        Page<Item> itemsPage = itemRepository.findAll(pageable);
+        return itemsPage.getContent(); // Retourne seulement la liste
     }
 
     @GetMapping("/{id}")
@@ -57,10 +55,9 @@ public class ItemController {
             @Valid @RequestBody Item itemDetails) {
         return itemRepository.findById(id)
                 .map(item -> {
-                    item.setSku(itemDetails.getSku());
                     item.setName(itemDetails.getName());
+                    item.setDescription(itemDetails.getDescription());
                     item.setPrice(itemDetails.getPrice());
-                    item.setStock(itemDetails.getStock());
                     item.setCategory(itemDetails.getCategory());
                     return ResponseEntity.ok(itemRepository.save(item));
                 })

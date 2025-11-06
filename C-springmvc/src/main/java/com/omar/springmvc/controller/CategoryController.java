@@ -8,10 +8,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -25,11 +27,12 @@ public class CategoryController {
     private ItemRepository itemRepository;
 
     @GetMapping
-    public Page<Category> getCategories(
+    public List<Category> getCategories(
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "50") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return categoryRepository.findAll(pageable);
+        Page<Category> categoryPage = categoryRepository.findAll(pageable);
+        return categoryPage.getContent(); // Retourne seulement la liste
     }
 
     @GetMapping("/{id}")
@@ -61,10 +64,9 @@ public class CategoryController {
     public ResponseEntity<?> deleteCategory(@PathVariable("id") Long id) {
         return categoryRepository.findById(id)
                 .map(category -> {
-                    // Vérifier s'il y a des items associés
                     Long itemCount = itemRepository.countByCategoryId(id);
                     if (itemCount > 0) {
-                        return ResponseEntity.badRequest()
+                        return ResponseEntity.status(HttpStatus.CONFLICT)
                                 .body("Cannot delete category with " + itemCount + " associated items");
                     }
                     categoryRepository.delete(category);
@@ -73,9 +75,9 @@ public class CategoryController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Endpoint relationnel
+    // Endpoint relationnel - retourne seulement la liste des items
     @GetMapping("/{id}/items")
-    public ResponseEntity<Page<Item>> getCategoryItems(
+    public ResponseEntity<List<Item>> getCategoryItems(
             @PathVariable("id") Long id,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "50") int size) {
@@ -85,8 +87,7 @@ public class CategoryController {
         }
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Item> items = itemRepository.findByCategoryId(id, pageable);
-
-        return ResponseEntity.ok(items);
+        Page<Item> itemsPage = itemRepository.findByCategoryId(id, pageable);
+        return ResponseEntity.ok(itemsPage.getContent()); // Retourne seulement la liste
     }
 }
