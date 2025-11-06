@@ -1,0 +1,40 @@
+services:
+  # --- Service PostgreSQL ---
+  db:
+    image: postgres:16
+    container_name: benchmark-db
+    restart: always
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: benchmark
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - benchmark-net
+
+  # --- Service pgAdmin ---
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin-benchmark
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - benchmark-net
+
+# --- Réseau partagé entre les deux conteneurs ---
+networks:
+  benchmark-net:
+    driver: bridge
+
+# --- Volume pour persister les données Postgres ---
+volumes:
+  pgdata:
