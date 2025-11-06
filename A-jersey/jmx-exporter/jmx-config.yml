@@ -1,0 +1,44 @@
+startDelaySeconds: 0
+lowercaseOutputName: false
+lowercaseOutputLabelNames: false
+
+rules:
+  # JVM Memory
+  - pattern: 'java.lang<type=Memory><HeapMemoryUsage>(\w+)'
+    name: jvm_memory_heap_$1
+    type: GAUGE
+
+  # JVM Threads
+  - pattern: 'java.lang<type=Threading><>(\w+)'
+    name: jvm_threads_$1
+    type: GAUGE
+
+  # JVM GC
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionCount'
+    name: jvm_gc_collection_count_total
+    labels:
+      gc: '$1'
+    type: COUNTER
+
+  - pattern: 'java.lang<type=GarbageCollector, name=(.+)><>CollectionTime'
+    name: jvm_gc_collection_time_seconds_total
+    labels:
+      gc: '$1'
+    type: COUNTER
+    valueFactor: 0.001
+
+  # JVM Classes
+  - pattern: 'java.lang<type=ClassLoading><>(\w+)'
+    name: jvm_classes_$1
+    type: GAUGE
+
+  # HikariCP
+  - pattern: 'com.zaxxer.hikari<type=Pool \((.+)\)><>(\w+)'
+    name: hikaricp_$2
+    labels:
+      pool: '$1'
+    type: GAUGE
+
+  - pattern: 'org.hibernate.core<type=Statistics><>(\w+)'
+    name: hibernate_$1
+    type: GAUGE

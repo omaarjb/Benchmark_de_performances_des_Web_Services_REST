@@ -63,6 +63,50 @@
             <version>2.19.2</version>
         </dependency>
 
+        <!-- Prometheus Client -->
+        <dependency>
+            <groupId>io.prometheus</groupId>
+            <artifactId>simpleclient</artifactId>
+            <version>0.16.0</version>
+        </dependency>
+
+        <!-- Prometheus HTTP Server (exposes /metrics endpoint) -->
+        <dependency>
+            <groupId>io.prometheus</groupId>
+            <artifactId>simpleclient_httpserver</artifactId>
+            <version>0.16.0</version>
+        </dependency>
+
+        <!-- Prometheus Hotspot (JVM metrics) -->
+        <dependency>
+            <groupId>io.prometheus</groupId>
+            <artifactId>simpleclient_hotspot</artifactId>
+            <version>0.16.0</version>
+        </dependency>
+
+        <!-- Prometheus Servlet (alternative way to expose metrics) -->
+        <dependency>
+            <groupId>io.prometheus</groupId>
+            <artifactId>simpleclient_servlet</artifactId>
+            <version>0.16.0</version>
+        </dependency>
+
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.omar.jersey.JerseyApplication</mainClass>
+                    <arguments>
+                        <argument>-javaagent:jmx-exporter/jmx_prometheus_javaagent.jar=9101:jmx-exporter/jmx-config.yml</argument>
+                    </arguments>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

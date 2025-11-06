@@ -11,7 +11,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import java.net.URI;
 
-public class Main {
+public class JerseyApplication {
     public static void main(String[] args) throws Exception {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("benchmark");
         emf.createEntityManager().close();
@@ -28,10 +28,10 @@ public class Main {
                 .register(provider);
 
         HttpServer server = GrizzlyHttpServerFactory.createHttpServer(
-                URI.create("http://0.0.0.0:8080/api"), rc
+                URI.create("http://0.0.0.0:8081/api"), rc
         );
 
-        System.out.println("Jersey running at http://localhost:8080/api");
+        System.out.println("Jersey running at http://localhost:8081/api");
         Thread.currentThread().join();
     }
 }

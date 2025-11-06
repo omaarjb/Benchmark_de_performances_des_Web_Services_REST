@@ -1,5 +1,6 @@
+
 services:
-  # --- Service PostgreSQL ---
+  # --- PostgreSQL ---
   db:
     image: postgres:16
     container_name: benchmark-db
@@ -15,7 +16,7 @@ services:
     networks:
       - benchmark-net
 
-  # --- Service pgAdmin ---
+  # --- pgAdmin ---
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin-benchmark
@@ -30,11 +31,57 @@ services:
     networks:
       - benchmark-net
 
-# --- Réseau partagé entre les deux conteneurs ---
+  # --- Prometheus ---
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - benchmark-net
+
+  # --- Grafana ---
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - benchmark-net
+
+  # --- InfluxDB (pour JMeter backend listener) ---
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb
+    restart: always
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=admin123
+      - DOCKER_INFLUXDB_INIT_ORG=benchmark
+      - DOCKER_INFLUXDB_INIT_BUCKET=jmeter_metrics
+      - DOCKER_INFLUXDB_INIT_RETENTION=1w
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=token123
+      - INFLUXD_HTTP_FLUX_ENABLED=true
+      - INFLUXD_HTTP_AUTH_ENABLED=false
+    networks:
+      - benchmark-net
+
 networks:
   benchmark-net:
     driver: bridge
 
-# --- Volume pour persister les données Postgres ---
 volumes:
   pgdata:

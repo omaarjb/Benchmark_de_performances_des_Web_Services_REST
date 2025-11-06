@@ -8,9 +8,9 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @SpringBootApplication(scanBasePackages = "com.omar")
 @EntityScan(basePackages = "com.omar.entities")
 @EnableJpaRepositories(basePackages = "com.omar.datarest.repositories")
-public class Application {
+public class DataRestApplication {
     public static void main(String[] args) {
-        SpringApplication.run(Application.class, args);
-        System.out.println("Spring Data REST running at http://localhost:8080/api");
+        SpringApplication.run(DataRestApplication.class, args);
+        System.out.println("Spring Data REST running at http://localhost:8083/api");
     }
 }
