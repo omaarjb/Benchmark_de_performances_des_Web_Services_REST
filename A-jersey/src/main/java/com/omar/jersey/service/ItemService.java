@@ -1,5 +1,6 @@
 package com.omar.jersey.service;
 
+import com.omar.entities.Category;
 import com.omar.entities.Item;
 import com.omar.jersey.JpaUtil;
 import jakarta.persistence.EntityManager;
@@ -51,17 +52,25 @@ public class ItemService {
         EntityManager em = JpaUtil.getEntityManager();
         EntityTransaction tx = em.getTransaction();
         tx.begin();
-        Item item = em.find(Item.class, id);
-        if (item != null) {
-            item.setName(data.getName());
-            item.setPrice(data.getPrice());
-            item.setStock(data.getStock());
-            item.setCategory(data.getCategory());
+
+        Item i = em.find(Item.class, id);
+        if (i != null) {
+            i.setSku(data.getSku());
+            i.setName(data.getName());
+            i.setPrice(data.getPrice());
+            i.setStock(data.getStock());
+
+            if (data.getCategory() != null && data.getCategory().getId() != null) {
+                i.setCategory(em.find(Category.class, data.getCategory().getId()));
+            }
+
+            i.setUpdatedAt(java.time.LocalDateTime.now());
         }
         tx.commit();
         em.close();
-        return item;
+        return i;
     }
+
 
     public boolean delete(Long id) {
         EntityManager em = JpaUtil.getEntityManager();
