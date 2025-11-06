@@ -1,7 +1,7 @@
 package com.omar.entities;
 
 import jakarta.persistence.*;
-
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
                 @Index(name = "idx_item_category", columnList = "category_id"),
                 @Index(name = "idx_item_updated_at", columnList = "updated_at")
         })
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Item {
 
     @Id
