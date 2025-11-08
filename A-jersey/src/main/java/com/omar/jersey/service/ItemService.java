@@ -59,6 +59,7 @@ public class ItemService {
             i.setName(data.getName());
             i.setPrice(data.getPrice());
             i.setStock(data.getStock());
+            i.setDescription(data.getDescription());
 
             if (data.getCategory() != null && data.getCategory().getId() != null) {
                 i.setCategory(em.find(Category.class, data.getCategory().getId()));
