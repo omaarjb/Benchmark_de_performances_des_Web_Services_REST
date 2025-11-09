@@ -73,6 +73,52 @@ Le monitoring du benchmark est entièrement orchestré via Docker Compose.
 
 ---
 
+## 🧩 Jeu de données initial — DataSeeder
+
+Le benchmark repose sur un jeu de données réaliste généré automatiquement par la classe `DataSeeder`.
+
+### ⚙️ Génération du dataset
+
+Le script `DataSeeder.java` insère un volume significatif de données dans la base PostgreSQL afin de simuler un environnement applicatif réel :
+
+| Élément | Détail |
+|----------|---------|
+| **Nombre de catégories** | 2 000 (`Category`) |
+| **Nombre d’items par catégorie** | 50 (`Item`) |
+| **Total d’items générés** | **100 000** |
+| **Taille moyenne des descriptions** | 5 120 caractères (≈ 5 Ko par item) |
+| **Flush batch** | 5 000 entités (optimisation JPA / mémoire) |
+
+### 📜 Description du fonctionnement
+
+Le seeder utilise **JPA (Jakarta Persistence)** via un `EntityManager` configuré avec `FlushModeType.COMMIT` pour garantir un compromis entre performance et cohérence :
+
+1. **Création des catégories**
+   - Boucle d’insertion de 2 000 entités `Category`
+   - Nettoyage du contexte de persistance (`em.flush()` / `em.clear()`) tous les 500 enregistrements
+
+2. **Création des items**
+   - Boucle imbriquée générant 50 `Item` par catégorie
+   - Référence directe via `em.getReference(Category.class, cid)` pour éviter les rechargements
+   - Flush automatique tous les 5 000 items pour réduire la consommation mémoire
+
+3. **Attributs simulés**
+   - Champs : `sku`, `name`, `price`, `stock`, `description`, `category`
+   - Description générée par `generateLorem(5120)` afin de simuler un **corps JSON de 5 Ko** dans les scénarios POST/PUT ("HeavyBody")
+
+### 📊 Objectif
+
+Ce dataset permet :
+- De reproduire des **volumes comparables à un environnement e-commerce réel**
+- D’évaluer les performances sur :
+  - Les **relations N:1 / 1:N** (`Category` → `Item`)
+  - Les **requêtes JOIN / filtrées**
+  - Les **corps JSON volumineux** dans les scénarios d’écriture
+
+### 🧠 Exemple de sortie console
+
+---
+
 ## 📡 5. Configuration de Prometheus
 
 Le fichier `prometheus.yml` configure la collecte des métriques de chaque service REST :
