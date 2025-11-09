@@ -96,6 +96,17 @@
             <artifactId>hibernate-hikaricp</artifactId>
             <version>6.6.33.Final</version>
         </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <version>1.12.6</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <version>1.12.6</version>
+        </dependency>
     </dependencies>
 
     <build>

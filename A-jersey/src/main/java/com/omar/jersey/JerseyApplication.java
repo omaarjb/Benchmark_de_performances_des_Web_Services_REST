@@ -2,16 +2,18 @@ package com.omar.jersey;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.omar.jersey.service.MetricsResource;
+import com.omar.jersey.service.MetricsRequestFilter;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.jersey.grizzly2.httpserver.GrizzlyHttpServerFactory;
 import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJaxbJsonProvider;
 import org.glassfish.jersey.server.ResourceConfig;
-
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import java.net.URI;
 
 public class JerseyApplication {
+
     public static void main(String[] args) throws Exception {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("benchmark");
         emf.createEntityManager().close();
@@ -25,7 +27,9 @@ public class JerseyApplication {
 
         ResourceConfig rc = new ResourceConfig()
                 .packages("com.omar.jersey")
-                .register(provider);
+                .register(provider)
+                .register(MetricsResource.class)
+                .register(MetricsRequestFilter.class);
 
         HttpServer server = GrizzlyHttpServerFactory.createHttpServer(
                 URI.create("http://0.0.0.0:8081/api"), rc
