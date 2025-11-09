@@ -138,7 +138,61 @@ L’objectif est de mesurer la capacité du serveur à répondre à des lectures
 📸 **Capture :**
 <img width="1212" height="677" alt="image" src="https://github.com/user-attachments/assets/f96bdc78-bc64-4669-86ef-f6a2e3c375a5" />
 
-### 📕 Scénario 2 — HeavyBody (Écriture intensive)
+
+### 📘 Scénario 2 — JOIN-filter (Requêtes avec filtres et jointures)
+
+Ce scénario mesure la performance des endpoints impliquant des **relations entre entités** (JOIN entre `Item` et `Category`).  
+Il met en évidence la capacité du framework à gérer efficacement les **requêtes filtrées** et les **relations N:1 / 1:N**.
+
+**Paramètres du Thread Group :**
+- **Nombre d’utilisateurs (threads)** : 120  
+- **Ramp-up period** : 60 secondes  
+- **Durée totale du test** : variable (`${TEST_DURATION}`)  
+- **Type de requêtes** : `GET` avec jointures et filtres (`categoryId`)  
+- **Répétition** : Infinie (jusqu’à expiration du temps de test)  
+- **Backend Listener** : Envoi des métriques vers **InfluxDB**
+
+**Endpoints testés :**
+- `GET /items?categoryId=`
+- `GET /categories/{id}/items`
+
+📸 **Capture du plan JMeter :**
+<img width="640" height="357" alt="image" src="https://github.com/user-attachments/assets/a0027f51-99d4-49d0-af6c-9221c4aa448f" />
+
+---
+
+### 📘 Scénario 3 — MIXED (2 entités, 100 utilisateurs, durée 600 s)
+
+Ce scénario combine plusieurs types d’opérations CRUD afin d’évaluer la **résilience globale** et la **cohérence des performances** sous une charge mixte.  
+L’objectif est de reproduire une activité réaliste d’un service REST manipulant les entités `Item` et `Category`.
+
+**Paramètres du Thread Group :**
+- **Nombre d’utilisateurs (threads)** : 100  
+- **Ramp-up period** : 60 secondes  
+- **Durée totale du test** : 600 secondes  
+- **Boucle** : Infinie (jusqu’à la fin du test)  
+- **Répartition des requêtes :**
+  - 50% → `GET` (lecture)
+  - 20% → `POST` (création)
+  - 20% → `PUT` (mise à jour)
+  - 10% → `DELETE` (suppression)
+- **Backend Listener** : Envoi des résultats vers **InfluxDB**
+
+**Endpoints testés :**
+- `GET /items`
+- `POST /items`
+- `PUT /items/{id}`
+- `DELETE /items/{id}`
+- `GET /categories`
+- `POST /categories`
+- `PUT /categories/{id}`
+
+📸 **Capture du plan JMeter :**
+<img width="640" height="363" alt="image" src="https://github.com/user-attachments/assets/819098e0-c16b-40d4-98ca-9e4b532e001e" />
+
+---
+
+### 📕 Scénario 4 — HeavyBody (Écriture intensive)
 
 Ce scénario met l’accent sur les opérations d’écriture impliquant des **corps de requêtes JSON volumineux**.  
 L’objectif est de mesurer la consommation CPU et mémoire lors de traitements plus lourds (POST/PUT).
@@ -221,7 +275,101 @@ Ce scénario simule des charges intensives de lecture (`GET`) sur les endpoints 
 
 ---
 
-### 📕 Scénario 2 — HeavyBody (60 utilisateurs, durée 480 s)
+### 📘 Scénario 2 — JOIN-filter (120 utilisateurs, durée ${TEST_DURATION})
+
+Ce scénario simule des requêtes de lecture avec **filtres et jointures** entre entités (`Item` ↔ `Category`).  
+L’objectif est d’évaluer la performance des frameworks face à des opérations de lecture plus complexes, impliquant des relations en base de données et des filtrages par paramètres.
+
+#### ⚙️ Paramètres :
+- **Threads (utilisateurs)** : 120  
+- **Ramp-up** : 60 s  
+- **Durée** : `${TEST_DURATION}`  
+- **Boucle** : infinie jusqu’à expiration  
+- **Répartition des requêtes** :  
+  - 70 % → `GET /items?categoryId=`  
+  - 30 % → `GET /categories/{id}/items`  
+- **Backend Listener** : InfluxDB  
+
+#### 📋 Résultats :
+
+| Scénario | Mesure | A : Jersey | C : @RestController | D : Spring Data REST |
+|-----------|---------|------------|---------------------|----------------------|
+| JOIN-filter | RPS | **1.01K req/s** | 997 req/s | 963 req/s |
+| JOIN-filter | p50 (ms) | **2.10** | 4.28 | 18.6 |
+| JOIN-filter | p95 (ms) | **5.58** | 8.77 | 44.9 |
+| JOIN-filter | p99 (ms) | **9.72** | 12.5 | 58.3 |
+| JOIN-filter | Err % | 0 | 1.27 | 1.20 |
+
+📸 **Captures Grafana :**
+
+#### 🅰️ Jersey  
+-- no image --
+
+#### 🅱️ Spring MVC  
+<img width="1000" height="466" alt="image" src="https://github.com/user-attachments/assets/002bed0a-76fc-4ec2-9044-6c1f73a67005" />
+
+#### 🅾️ Spring Data REST  
+-- no image --
+
+---
+
+#### 🧩 Analyse :
+- **Jersey** conserve une avance nette avec un **p99 à 9,7 ms** et une latence globalement plus stable sous forte charge.  
+- **Spring MVC** reste performant mais montre un léger taux d’erreur (**1,27 %**) probablement dû à la saturation du pool de connexions HikariCP.  
+- **Spring Data REST** est significativement plus lent, avec une latence p95 proche de **45 ms**, conséquence des surcharges liées à la sérialisation automatique et aux couches d’abstraction Spring Data.  
+- Ce scénario met en lumière l’impact des **jointures JPA et filtres complexes** sur les performances des frameworks REST.
+
+---
+
+### 📘 Scénario 3 — MIXED (2 entités, 100 utilisateurs, durée 600 s)
+
+Ce scénario combine différentes opérations CRUD (`GET`, `POST`, `PUT`, `DELETE`) sur les entités `Item` et `Category`.  
+L’objectif est de mesurer la **résilience**, la **latence moyenne** et le **débit global** lorsque le système subit une charge variée, proche d’une utilisation réelle.
+
+#### ⚙️ Paramètres :
+- **Threads (utilisateurs)** : 100  
+- **Ramp-up** : 60 s  
+- **Durée** : 600 s  
+- **Boucle** : infinie jusqu’à expiration  
+- **Répartition des requêtes** :  
+  - 50% → `GET` (lecture)  
+  - 20% → `POST` (création)  
+  - 20% → `PUT` (mise à jour)  
+  - 10% → `DELETE` (suppression)  
+- **Backend Listener** : InfluxDB  
+
+#### 📋 Résultats :
+
+| Scénario | Mesure | A : Jersey | C : @RestController | D : Spring Data REST |
+|-----------|---------|------------|---------------------|----------------------|
+| MIXED (2 entités) | RPS | **1.04K req/s** | 1.18K req/s | 817 req/s |
+| MIXED (2 entités) | p50 (ms) | 5.07 | 48.3 | **7.73** |
+| MIXED (2 entités) | p95 (ms) | **12.6** | 36.4 | 17.5 |
+| MIXED (2 entités) | p99 (ms) | 18.8 | **17.7** | 26.5 |
+| MIXED (2 entités) | Err % | **0.1** | 0.8 | 1.2 |
+
+📸 **Captures Grafana :**
+
+#### 🅰️ Jersey  
+<img width="975" height="824" alt="image" src="https://github.com/user-attachments/assets/1724f922-dba3-4d03-9afe-b93d82cc62e5" />
+
+#### 🅱️ Spring MVC  
+<img width="975" height="735" alt="image" src="https://github.com/user-attachments/assets/669d218a-6cc1-4d78-a3c2-2917a2818ccb" />
+
+#### 🅾️ Spring Data REST  
+<img width="975" height="498" alt="image" src="https://github.com/user-attachments/assets/2faa2618-30b3-43c6-b833-2c3c154fc0f0" />
+
+---
+
+#### 🧩 Analyse :
+- **Jersey (JAX-RS)** reste le plus stable sur la charge mixte, affichant un excellent compromis entre débit et latence, avec un **taux d’erreur quasi nul (0.1%)**.  
+- **Spring MVC** obtient un meilleur **débit brut (1.18K req/s)**, mais avec des latences p50 beaucoup plus élevées (~48 ms).  
+- **Spring Data REST** montre un ralentissement important dû à la **sérialisation automatique** et à la **gestion interne des transactions JPA**.  
+- Globalement, ce scénario démontre que **Jersey** conserve une efficacité remarquable même lorsque plusieurs types d’opérations sont exécutées simultanément.
+
+---
+
+### 📕 Scénario 4 — HeavyBody (60 utilisateurs, durée 480 s)
 
 Ce scénario évalue la performance sur des requêtes d’écriture lourdes (`POST` et `PUT`) contenant des corps JSON d’environ **5 Ko**.
 
