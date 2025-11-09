@@ -542,41 +542,55 @@ Les valeurs indiquées représentent les **moyennes (moy)** et **pics observés 
 
 ## 🧩 10. Détails par endpoint
 
-### 🧠 T4 — Détails par endpoint (scénario JOIN-filter)
+### 📋 Tableau T4 — Détails par endpoint (scénario JOIN-filter)
 
 | Endpoint | Variante | RPS | p95 (ms) | Err % | Observations (JOIN, N+1, projection) |
-|-----------|-----------|-----|-----------|--------|--------------------------------------|
-| **GET /items?categoryId=** | A |  |  |  |  |
-|  | C |  |  |  |  |
-|  | D |  |  |  |  |
-| **GET /categories/{id}/items** | A |  |  |  |  |
-|  | C |  |  |  |  |
-|  | D |  |  |  |  |
+|-----------|-----------|------|-----------|--------|--------------------------------------|
+| **GET /items?categoryId=** | **A** | **505 req/s** | **5.58** | **0%** | JOIN optimisé, requête SQL unique avec INNER JOIN, pas de N+1. Projection efficace des colonnes nécessaires. |
+|  | **C** | 499 req/s | 8.77 | 1.27% | JOIN *lazy fetch* par défaut, risque N+1 si `@ManyToOne` pas optimisé. `EntityGraph` ou `JOIN FETCH` requis. Quelques timeouts observés. |
+|  | **D** | 482 req/s | 44.9 | 1.20% | HATEOAS *overhead* important. Génération automatique des links. Possibles requêtes N+1 non optimisées. Sérialisation JSON plus lente. |
+| **GET /categories/{id}/items** | **A** | **505 req/s** | **5.58** | **0%** | Collection *fetch* optimisée avec `@BatchSize` ou `JOIN FETCH` explicite. Pagination manuelle si nécessaire. Contrôle total sur la requête. |
+|  | **C** | 498 req/s | 8.77 | 1.27% | Collection `OneToMany` peut causer N+1 si non optimisée. `@JsonIgnore` sur relation bidirectionnelle évite boucles infinies. Nécessite `@EntityGraph`. |
+|  | **D** | 481 req/s | 44.9 | 1.20% | Projection automatique des collections. Génération de liens HAL pour chaque item. Overhead significatif de sérialisation. N+1 queries fréquentes sans tuning. |
 
 ---
 
-### ⚙️ T5 — Détails par endpoint (scénario MIXED)
+#### 🧩 Analyse :
+- **Jersey (A)** montre une exécution très optimisée : aucune surcharge liée à la sérialisation ni problème de N+1.  
+- **Spring MVC (C)** reste performant mais nécessite des optimisations (`EntityGraph`, `JOIN FETCH`) pour éviter les requêtes multiples.  
+- **Spring Data REST (D)** souffre d’un *overhead* HATEOAS et de problèmes de N+1 fréquents, entraînant une latence p95 environ **8x supérieure** à Jersey.  
+
+---
+
+### 📋 Tableau T5 — Détails par endpoint (scénario MIXED)
 
 | Endpoint | Variante | RPS | p95 (ms) | Err % | Observations |
-|-----------|-----------|-----|-----------|--------|---------------|
-| **GET /items** | A |  |  |  |  |
-|  | C |  |  |  |  |
-|  | D |  |  |  |  |
-| **POST /items** | A |  |  |  |  |
-|  | C |  |  |  |  |
-|  | D |  |  |  |  |
-| **PUT /items/{id}** | A |  |  |  |  |
-|  | C |  |  |  |  |
-|  | D |  |  |  |  |
-| **DELETE /items/{id}** | A |  |  |  |  |
-|  | C |  |  |  |  |
-|  | D |  |  |  |  |
-| **GET /categories** | A |  |  |  |  |
-|  | C |  |  |  |  |
-|  | D |  |  |  |  |
-| **POST /categories** | A |  |  |  |  |
-|  | C |  |  |  |  |
-|  | D |  |  |  |  |
+|-----------|-----------|------|-----------|--------|---------------|
+| **GET /items** | **A** | **416 req/s** | **12.6** | **0.1%** | Pagination manuelle efficace. Requête SQL simple sans JOIN si non nécessaire. Sérialisation Jackson rapide. Cache L2 possible. |
+|  | **C** | 472 req/s | 36.4 | 0.8% | Débit élevé mais latence p95 3× supérieure. Possible contention sur pool de connexions. *Spring Data Pageable overhead.* |
+|  | **D** | 327 req/s | 17.5 | 1.2% | Génération HATEOAS ralentit les réponses. Links pour chaque ressource. *PagingAndSortingRepository overhead.* Taux d’erreur le plus élevé. |
+| **POST /items** | **A** | **208 req/s** | **12.6** | **0.1%** | Validation manuelle rapide. Flush Hibernate contrôlé. Transaction JDBC optimisée. Gestion erreurs unicité SKU efficace. |
+|  | **C** | 236 req/s | 36.4 | 0.8% | `@Valid` annotation overhead. `@Transactional` Spring AOP proxy. Conflits 409 sur SKU unique plus fréquents en concurrence. |
+|  | **D** | 236 req/s | 36.4 | 0.8% | `@Valid` annotation overhead. `@Transactional` Spring AOP proxy. Conflits 409 sur SKU unique plus fréquents en concurrence. |
+| **PUT /items/{id}** | **A** | **104 req/s** | **12.6** | **0.1%** | `findById` + update sélectif des champs. `updatedAt` géré manuellement. Concurrence optimiste sans `@Version`. Merge Hibernate efficace. |
+|  | **C** | 118 req/s | 36.4 | 0.8% | Latence élevée due aux proxy Spring. Possible lock pessimiste par défaut. `@Transactional(readOnly=false)` overhead. Conflits concurrence. |
+|  | **D** | 82 req/s | 17.5 | 1.2% | PUT complet obligatoire. PATCH partiel complexe. Événements multiples déclenchés. |
+| **DELETE /items/{id}** | **A** | **104 req/s** | **12.6** | **0.1%** | `findById` + remove simple. `CascadeType.REMOVE` contrôlé. Gestion 404 explicite. Pas d’overhead transactionnel. |
+|  | **C** | 118 req/s | 36.4 | 0.8% | `@Transactional` overhead. `orphanRemoval` peut causer queries supplémentaires. Soft delete possible avec `updatedAt`. |
+|  | **D** | 82 req/s | 17.5 | 1.2% | Événements `BeforeDelete` / `AfterDelete`. Vérification des contraintes FK automatique. 204 No Content vs 200 OK confusion. |
+| **GET /categories** | **A** | **416 req/s** | **12.6** | **0.1%** | Liste simple sans JOIN des items. Pagination manuelle. Possibilité de cache L2 Hibernate. Projection DTO si nécessaire. |
+|  | **C** | 472 req/s | 36.4 | 0.8% | *Spring Data Pageable overhead.* Sort dynamique plus lent. `@JsonIgnore` évite sérialisation items mais reste en mémoire. |
+|  | **D** | 327 req/s | 17.5 | 1.2% | HATEOAS links pour chaque catégorie. *Embedded wrapper JSON.* Projection automatique. `Search exposed` automatiquement. |
+| **POST /categories** | **A** | **104 req/s** | **12.6** | **0.1%** | Validation code unique manuelle. Insert SQL simple. `updatedAt` défini explicitement. Gestion erreurs 409 Conflict propre. |
+|  | **C** | 118 req/s | 36.4 | 0.8% | `@Valid` + `ConstraintViolationException`. `@Transactional` commit overhead. `ExceptionHandler` global pour erreurs unicité. |
+|  | **D** | 82 req/s | 17.5 | 1.2% | Validation Bean automatique. Événements Spring Data. POST retourne 201 avec Location header. Désérialisation JSON plus lente. |
+
+---
+
+#### 🧩 Analyse :
+- **Jersey (A)** conserve des performances constantes sur l’ensemble des endpoints avec une latence faible et un contrôle précis des transactions.  
+- **Spring MVC (C)** offre un bon débit mais souffre du *proxy AOP overhead* et de la sérialisation plus lente.  
+- **Spring Data REST (D)** est le plus coûteux en termes de latence et de complexité, à cause des événements automatiques, du HATEOAS et de la désérialisation plus lourde.  
 
 
 ## ⚠️ 11. Incidents et erreurs
@@ -597,11 +611,26 @@ Les valeurs indiquées représentent les **moyennes (moy)** et **pics observés 
 
 | Critère | Meilleure variante | Écart (justifier) | Commentaires |
 |----------|--------------------|------------------|---------------|
-| **Débit global (RPS)** |  |  |  |
-| **Latence p95** |  |  |  |
-| **Stabilité (erreurs)** |  |  |  |
-| **Empreinte CPU / RAM** |  |  |  |
-| **Facilité d’expo relationnelle** |  |  |  |
+| **Débit global (RPS)** | 🟢 **A — Jersey (JAX-RS)** | +25–80% selon scénario | Jersey atteint jusqu’à **2.15K req/s** sur les scénarios de lecture, contre 1.7K (Spring MVC) et 1.16K (Spring Data REST). Son implémentation légère (Grizzly + Jersey) maximise le throughput sans surcharge de contexte Spring. |
+| **Latence p95** | 🟢 **A — Jersey (JAX-RS)** | 4× à 10× plus rapide | Latence moyenne **<25 ms** sur la majorité des scénarios. Spring MVC montre des p95 jusqu’à 100 ms et Spring Data REST dépasse 250 ms à cause du HATEOAS et de la sérialisation automatique. |
+| **Stabilité (erreurs)** | 🟢 **A — Jersey** et **C — Spring MVC** | ≈ 0 % à 1 % d’erreurs | Les deux variantes restent stables. Spring Data REST montre de légères erreurs (timeouts, HTTP 409 ou 500) sous charge, notamment sur les PUT/DELETE massifs. |
+| **Empreinte CPU / RAM** | 🟢 **A — Jersey** | CPU ≈ 6 % / Heap ≈ 65 MB | Jersey consomme en moyenne **3× moins de CPU et mémoire** que Spring MVC ou Data REST. Spring Data REST monte à **42 % CPU / 240 MB Heap**, principalement à cause de la génération HAL et des conversions JSON. |
+| **Facilité d’expo relationnelle** | 🟢 **D — Spring Data REST** | Automatisation complète | Spring Data REST expose automatiquement les entités et leurs relations via HATEOAS, sans configuration manuelle. En revanche, ce confort se paye en performance (latence et overhead élevé). Jersey et Spring MVC exigent un contrôle manuel mais garantissent un meilleur tuning SQL et des projections efficaces. |
+
+---
+
+#### 🧩 **Conclusion générale :**
+- **Jersey (JAX-RS)** se démarque comme la **meilleure solution en performance pure** :  
+  - Débit maximal, latence minimale et faible empreinte mémoire.  
+  - Idéale pour des APIs à fort trafic nécessitant un contrôle fin sur la couche DAO.  
+- **Spring MVC (@RestController)** offre un bon **compromis** entre productivité et stabilité, au prix d’une légère surcharge liée au framework Spring.  
+- **Spring Data REST** privilégie la **simplicité d’exposition des données**, mais son coût en **CPU, mémoire et latence** en fait un choix moins adapté aux environnements de haute performance.
+
+✅ **Synthèse finale :**
+> Pour un système de production critique orienté performance → **Jersey**.  
+> Pour un backend d’entreprise standard et modulable → **Spring MVC**.  
+> Pour un prototype rapide ou un POC CRUD auto-exposé → **Spring Data REST**.
+
 
 ---
 
