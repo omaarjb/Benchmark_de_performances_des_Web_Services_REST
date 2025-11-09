@@ -33,21 +33,22 @@ Les tableaux de bord **Grafana** permettent d’analyser la charge CPU, l’util
 
 ## 🧩 3. Structure du projet
 
-L’organisation du projet est modulaire pour séparer les différentes implémentations et les ressources communes.
-
+L'organisation du projet est modulaire pour séparer les différentes implémentations et les ressources communes.
+```
 Benchmark/
 │
-├── A-jersey/ # Implémentation JAX-RS (Jersey + Grizzly)
-├── C-springmvc/ # Implémentation Spring MVC
-├── D-datarest/ # Implémentation Spring Data REST
-├── common/ # Entités JPA et configuration partagée
-├── jmeter-tests/ # Plans de test (.jmx)
-├── results/ # Données exportées / graphiques
+├── A-jersey/            # Implémentation JAX-RS (Jersey + Grizzly)
+├── C-springmvc/         # Implémentation Spring MVC
+├── D-datarest/          # Implémentation Spring Data REST
+├── common/              # Entités JPA et configuration partagée
+├── jmeter-tests/        # Plans de test (.jmx)
+├── results/             # Données exportées / graphiques
 │
-├── docker-compose.yml # Stack de monitoring
-├── prometheus.yml # Configuration Prometheus
-├── pom.xml # Projet parent Maven
-└── jmeter.log # Logs de test
+├── docker-compose.yml   # Stack de monitoring
+├── prometheus.yml       # Configuration Prometheus
+├── pom.xml              # Projet parent Maven
+└── jmeter.log           # Logs de test
+```
 
 📸 **Capture :**
 <img width="457" height="642" alt="image" src="https://github.com/user-attachments/assets/383b0147-ea44-470f-9d52-bcea6c1f9a8e" />
