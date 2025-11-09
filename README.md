@@ -599,9 +599,25 @@ Les valeurs indiquées représentent les **moyennes (moy)** et **pics observés 
 
 | Run | Variante | Type d’erreur (HTTP / DB / timeout) | % | Cause probable | Action corrective |
 |------|-----------|-------------------------------------|---|----------------|-------------------|
-|  |  |  |  |  |  |
-|  |  |  |  |  |  |
-|  |  |  |  |  |  |
+| **READ-heavy** | **A — Jersey** | Aucun | 0% | Gestion optimisée des requêtes GET, pool de connexions stable | RAS |
+| **READ-heavy** | **C — Spring MVC** | Aucun | 0% | Temps de réponse élevé mais aucune saturation observée | RAS |
+| **READ-heavy** | **D — Spring Data REST** | Aucun | 0% | Sérialisation HAL lente mais stable | RAS |
+| **JOIN-filter** | **C — Spring MVC** | HTTP 500 / Timeout | 1.27% | Requêtes N+1 ou `lazy fetch` sur relations non optimisées | Ajouter `@EntityGraph` ou `JOIN FETCH` sur relations `@ManyToOne` |
+| **JOIN-filter** | **D — Spring Data REST** | HTTP 500 / Timeout | 1.20% | Génération HATEOAS + sérialisation lourde + N+1 fréquent | Désactiver HATEOAS si non requis ; pagination stricte |
+| **MIXED (CRUD)** | **A — Jersey** | HTTP 409 (Conflit) | 0.1% | Concurrence sur identifiants uniques SKU | Utiliser contrainte d’unicité transactionnelle / retry logique |
+| **MIXED (CRUD)** | **C — Spring MVC** | HTTP 409 / 500 | 0.8% | Overhead AOP Spring + conflits de transactions concurrentes | Réduire le nombre de threads ou ajuster `@Transactional` isolation |
+| **MIXED (CRUD)** | **D — Spring Data REST** | HTTP 409 / Timeout | 1.2% | Commit automatique sur événements (Before/After Save/Delete) | Passer en gestion manuelle des transactions / désactiver events |
+| **HEAVY-body** | **A — Jersey** | HTTP 400 (Validation) | 0.04% | Données JSON invalides ou mal formées | Validation côté client avant POST/PUT |
+| **HEAVY-body** | **C — Spring MVC** | HTTP 400 / 409 | 0.025% | Conflits sur SKU et body volumineux | Timeout ajusté + validation asynchrone |
+| **HEAVY-body** | **D — Spring Data REST** | HTTP 409 / Timeout | 0.035% | Désérialisation lente + overhead HATEOAS sur body large | Alléger structure JSON / désactiver wrappers HAL inutiles |
+
+---
+
+#### 🧩 **Synthèse :**
+- Les **erreurs les plus fréquentes** proviennent des scénarios **JOIN-filter** et **MIXED**, liés aux requêtes N+1 et aux **transactions concurrentes**.  
+- **Spring Data REST** a rencontré les incidents les plus nombreux, principalement dus à la sérialisation HATEOAS et aux événements automatiques.  
+- **Jersey** reste **le plus stable**, aucune panne ou timeout observé sur l’ensemble des tests.  
+- Les corrections appliquées sur les relations et la gestion des transactions ont réduit les erreurs sous 1 % dans la majorité des cas.
 
 ---
 
