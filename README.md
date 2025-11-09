@@ -306,6 +306,339 @@ Ce scénario évalue la performance sur des requêtes d’écriture lourdes (`PO
 
 ---
 
+## 🧠 9. Consommation des ressources JVM (Prometheus)
+
+Les tests de charge du scénario **ReadHeavy (100 utilisateurs, 600 s)** ont permis de mesurer l’utilisation des **ressources JVM** (CPU, mémoire, threads, GC, pool de connexions) via **Micrometer / Prometheus / Grafana**.
+
+Les valeurs indiquées représentent les **moyennes (moy)** et **pics observés (pic)** pendant la durée du test.
+
+---
+
+### 📊 Tableau T3 — Ressources JVM (Prometheus)
+
+| Variante | CPU proc. (%) moy/pic | Heap (Mo) moy/pic | GC time (ms/s) moy/pic | Threads actifs moy/pic | Hikari (actifs/max) |
+|-----------|-----------------------|-------------------|------------------------|------------------------|---------------------|
+| **A : Jersey (JAX-RS)** | **6.57 / 13.5** | **65.8 / 90.1** | **4.35 / 6.07** | **55.0 / 56** | - |
+| **C : Spring MVC (@RestController)** | 12 / 22 | 132 / 191 | 2.19 / 3.95 | 91.9 / 106 | 17.8 / 66 |
+| **D : Spring Data REST** | 30.6 / 42.2 | 150 / 241 | 7.23 / 9.29 | 97.9 / 107 | 40.1 / 67 |
+
+---
+
+### 📸 Visualisation Grafana — Ressources JVM (ReadHeavy)
+
+#### 🅰️ **Jersey (JAX-RS)**
+- **Moyenne :**
+  <img width="975" height="528" alt="image" src="https://github.com/user-attachments/assets/25e2e195-5ee7-4e5c-b016-1f391f4f0ba8" />
+- **Pic :**
+  <img width="975" height="503" alt="image" src="https://github.com/user-attachments/assets/507671ee-b34d-408e-be7c-8c3b1a7b5ff8" />
+
+---
+
+#### 🅱️ **Spring MVC (@RestController)**
+- **Moyenne :**
+  <img width="975" height="530" alt="image" src="https://github.com/user-attachments/assets/b671884d-246e-4b3b-8595-9c395f2f63b0" />
+- **Pic :**
+  <img width="975" height="515" alt="image" src="https://github.com/user-attachments/assets/17f4aa28-eea3-4230-aec6-a9f3880ddb2b" />
+
+---
+
+#### 🅾️ **Spring Data REST**
+- **Moyenne :**
+  <img width="975" height="527" alt="image" src="https://github.com/user-attachments/assets/096a2be1-377e-44ef-b850-3807ce96126a" />
+- **Pic :**
+  <img width="975" height="527" alt="image" src="https://github.com/user-attachments/assets/877bf027-bb14-4c6c-9a69-f4ee70beca34" />
+
+---
+
+### 🧩 Analyse des résultats
+
+- **CPU :**  
+  Jersey est nettement plus léger (≈6.5 % en moyenne), tandis que Spring Data REST monte à plus de 40 % lors des pics.  
+  Cela s’explique par le coût supplémentaire des conversions d’entités et de la sérialisation automatique.
+
+- **Mémoire (Heap) :**  
+  Spring Data REST consomme le plus de mémoire (≈150–241 Mo), suivi de Spring MVC (≈130–190 Mo).  
+  Jersey reste particulièrement efficace avec une utilisation stable (~65–90 Mo).
+
+- **Garbage Collector (GC) :**  
+  Spring MVC montre les pauses GC les plus courtes (≈2–4 ms), alors que Spring Data REST connaît des cycles plus longs (jusqu’à 9 ms).  
+  Jersey reste équilibré.
+
+- **Threads :**  
+  Spring Data REST crée davantage de threads actifs (~100), conséquence de la gestion automatique des couches Spring.  
+  Jersey en maintient environ 55, soit près de deux fois moins.
+
+- **HikariCP :**  
+  Seules les implémentations Spring utilisent HikariCP.  
+  Spring MVC affiche une utilisation raisonnable (~18/66 connexions),  
+  tandis que Spring Data REST monte à ~40/67 sous forte charge.
+
+---
+
+### 🧠 Conclusion synthétique
+
+| Critère | Jersey | Spring MVC | Spring Data REST |
+|----------|---------|-------------|------------------|
+| **Efficacité CPU** | 🥇 Excellente | 🥈 Bonne | 🥉 Moyenne |
+| **Mémoire (Heap)** | 🥇 Faible consommation | 🥈 Modérée | 🥉 Élevée |
+| **Stabilité GC** | 🥈 Correcte | 🥇 Optimale | 🥉 Moyenne |
+| **Threads actifs** | 🥇 Légère | 🥈 Moyenne | 🥉 Lourde |
+| **Pool Hikari** | - | 🥇 Contrôlé | 🥈 Chargé |
+
+---
+
+📈 *Ces mesures confirment que l’implémentation JAX-RS (Jersey) reste la plus économe en ressources, tandis que les frameworks Spring offrent plus de confort de développement au prix d’un coût mémoire et CPU supérieur.*
+
+---
+
+## 🧩 10. Détails par endpoint
+
+### 🧠 T4 — Détails par endpoint (scénario JOIN-filter)
+
+| Endpoint | Variante | RPS | p95 (ms) | Err % | Observations (JOIN, N+1, projection) |
+|-----------|-----------|-----|-----------|--------|--------------------------------------|
+| **GET /items?categoryId=** | A |  |  |  |  |
+|  | C |  |  |  |  |
+|  | D |  |  |  |  |
+| **GET /categories/{id}/items** | A |  |  |  |  |
+|  | C |  |  |  |  |
+|  | D |  |  |  |  |
+
+---
+
+### ⚙️ T5 — Détails par endpoint (scénario MIXED)
+
+| Endpoint | Variante | RPS | p95 (ms) | Err % | Observations |
+|-----------|-----------|-----|-----------|--------|---------------|
+| **GET /items** | A |  |  |  |  |
+|  | C |  |  |  |  |
+|  | D |  |  |  |  |
+| **POST /items** | A |  |  |  |  |
+|  | C |  |  |  |  |
+|  | D |  |  |  |  |
+| **PUT /items/{id}** | A |  |  |  |  |
+|  | C |  |  |  |  |
+|  | D |  |  |  |  |
+| **DELETE /items/{id}** | A |  |  |  |  |
+|  | C |  |  |  |  |
+|  | D |  |  |  |  |
+| **GET /categories** | A |  |  |  |  |
+|  | C |  |  |  |  |
+|  | D |  |  |  |  |
+| **POST /categories** | A |  |  |  |  |
+|  | C |  |  |  |  |
+|  | D |  |  |  |  |
+
+
+## ⚠️ 11. Incidents et erreurs
+
+### 🧾 T6 — Incidents / erreurs
+
+| Run | Variante | Type d’erreur (HTTP / DB / timeout) | % | Cause probable | Action corrective |
+|------|-----------|-------------------------------------|---|----------------|-------------------|
+|  |  |  |  |  |  |
+|  |  |  |  |  |  |
+|  |  |  |  |  |  |
+
+---
+
+## 🧩 12. Synthèse & conclusion
+
+### 🧠 T7 — Synthèse & conclusion
+
+| Critère | Meilleure variante | Écart (justifier) | Commentaires |
+|----------|--------------------|------------------|---------------|
+| **Débit global (RPS)** |  |  |  |
+| **Latence p95** |  |  |  |
+| **Stabilité (erreurs)** |  |  |  |
+| **Empreinte CPU / RAM** |  |  |  |
+| **Facilité d’expo relationnelle** |  |  |  |
+
+---
+
+
+## 🚀 13. Démarrage du benchmark
+
+Cette section décrit comment exécuter le projet de benchmark complet (applications, base de données, monitoring, et tests de charge).
+
+---
+
+### 🧩 Prérequis
+
+Avant de démarrer, assurez-vous d’avoir installé :
+
+- **Docker Desktop** ≥ 28.5.1  
+- **Java JDK 17**  
+- **Apache Maven** ≥ 3.9  
+- **Apache JMeter** ≥ 5.6.3  
+- **Git** (pour cloner le projet)
+- Optionnel : **pgAdmin** (gestion de la base PostgreSQL)
+
+---
+
+### 🏗️ 1. Cloner le projet
+
+```bash
+git clone https://github.com/<votre-utilisateur>/benchmark-rest.git
+cd benchmark-rest
+```
+---
+
+## 🐋 2. Lancer l’infrastructure Docker
+
+Le fichier `docker-compose.yml` se trouve à la racine du projet et déploie les services suivants :
+
+| Service | Description | Port |
+|----------|--------------|------|
+| **PostgreSQL** | Base de données relationnelle | `5433:5432` |
+| **pgAdmin** | Interface web de gestion PostgreSQL | `5050:80` |
+| **Prometheus** | Collecte des métriques des microservices | `9090:9090` |
+| **Grafana** | Visualisation des dashboards | `3000:3000` |
+| **InfluxDB** | Stockage des résultats JMeter | `8086:8086` |
+
+Démarrez tous les conteneurs :
+
+```bash
+docker-compose up -d
+```
+
+💡 **Vérifiez ensuite que les conteneurs sont bien UP avec :**
+
+```bash
+docker ps
+```
+
+---
+
+## ⚙️ 3. Démarrer les applications à tester
+
+Chaque module correspond à une variante du web service :
+
+| Module | Framework | Port | Commande de démarrage |
+|---------|------------|------|------------------------|
+| **A-jersey** | JAX-RS (Grizzly + Jersey) | `8081` | `mvn clean package` → puis `java -jar target/A-jersey.jar` |
+| **C-springmvc** | Spring MVC + @RestController | `8082` | `mvn spring-boot:run` |
+| **D-datarest** | Spring Data REST | `8083` | `mvn spring-boot:run` |
+
+⚠️ **Assurez-vous que chaque application expose bien ses métriques Prometheus :**
+
+- JAX-RS → `/api/metrics`
+- Spring MVC → `/api/actuator/prometheus`
+- Spring Data REST → `/actuator/prometheus`
+
+---
+
+## 📡 4. Vérifier la configuration Prometheus
+
+Les endpoints sont définis dans `prometheus.yml` :
+
+```yaml
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'jaxrs'
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+
+  - job_name: 'springmvc'
+    metrics_path: '/api/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8082']
+
+  - job_name: 'datarest'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8083']
+```
+
+🧠 **Accès à Prometheus :** [http://localhost:9090/targets](http://localhost:9090/targets)
+
+Vous devez voir les trois services avec l’état **UP ✅**
+
+---
+
+## 📊 5. Accéder à Grafana
+
+- **URL** : [http://localhost:3000](http://localhost:3000)
+- **Identifiants par défaut :**
+  ```
+  user: admin
+  password: admin
+  ```
+
+Importez les dashboards :
+
+- **JVM (Micrometer)** → pour suivre CPU, Heap, GC, Threads, Hikari
+- **JMeter (InfluxDB)** → pour suivre RPS, latence, erreurs, percentiles
+
+---
+
+## 🧪 6. Lancer les scénarios JMeter
+
+Les fichiers de test se trouvent dans le dossier `/jmeter-tests` :
+
+| Fichier | Description | Utilisateurs | Durée |
+|----------|--------------|---------------|--------|
+| `ReadHeavy.jmx` | Scénario de lecture intensive | 100 | 600 s |
+| `HeavyBody.jmx` | Scénario POST/PUT lourd (body JSON 5 KB) | 60 | 480 s |
+| `JoinFilter.jmx` | Scénario de requêtes filtrées (JOIN, N+1) | (à définir) | (à définir) |
+| `Mixed.jmx` | Scénario combiné (CRUD mixte) | (à définir) | (à définir) |
+
+Pour exécuter un test et envoyer les résultats vers InfluxDB :
+
+```bash
+jmeter -n -t jmeter-tests/ReadHeavy.jmx -l results/readheavy.jtl \
+  -e -o results/dashboard \
+  -Jinfluxdb.url=http://localhost:8086 \
+  -Jinfluxdb.db=jmeter
+```
+
+---
+
+## 📈 7. Visualiser les résultats
+
+### 🔹 Dashboard "JMeter + InfluxDB"
+Permet de visualiser :
+
+- RPS (Requêtes par seconde)
+- p50, p95, p99 (latence)
+- Erreurs (%)
+- Comparaison entre variantes
+
+### 🔹 Dashboard "JVM (Micrometer)"
+
+- Utilisation CPU / mémoire
+- Temps de GC
+- Threads actifs
+- Connexions HikariCP
+
+---
+
+## 🧹 8. Nettoyer les conteneurs
+
+Pour arrêter et supprimer tous les conteneurs :
+
+```bash
+docker-compose down
+```
+
+---
+
+## ✅ Résumé
+
+| Étape | Description | Commande clé |
+|-------|--------------|---------------|
+| 1️⃣ | Démarrer Docker | `docker-compose up -d` |
+| 2️⃣ | Lancer les apps | `mvn spring-boot:run` / `java -jar` |
+| 3️⃣ | Vérifier Prometheus | `localhost:9090/targets` |
+| 4️⃣ | Ouvrir Grafana | `localhost:3000` |
+| 5️⃣ | Lancer JMeter | `jmeter -n -t test.jmx -l results.jtl` |
+
+---
+
+💬 Vous pouvez maintenant exécuter vos benchmarks, observer les métriques JVM et comparer les performances entre les trois implémentations REST : **Jersey**, **Spring MVC** et **Spring Data REST**.
 
 
 
