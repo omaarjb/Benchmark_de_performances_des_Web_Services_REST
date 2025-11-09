@@ -115,8 +115,6 @@ Ce dataset permet :
   - Les **requêtes JOIN / filtrées**
   - Les **corps JSON volumineux** dans les scénarios d’écriture
 
-### 🧠 Exemple de sortie console
-
 ---
 
 ## 📡 5. Configuration de Prometheus
