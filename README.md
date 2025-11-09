@@ -50,7 +50,8 @@ Benchmark/
 └── jmeter.log # Logs de test
 
 📸 **Capture :**
-<img width="458" height="523" alt="image" src="https://github.com/user-attachments/assets/83a5596a-2b5a-4b76-bd90-702bfd2a415f" />
+<img width="457" height="642" alt="image" src="https://github.com/user-attachments/assets/383b0147-ea44-470f-9d52-bcea6c1f9a8e" />
+
 
 
 ---
@@ -134,7 +135,7 @@ L’objectif est de mesurer la capacité du serveur à répondre à des lectures
 - `GET /categories?page=&size=`
 
 📸 **Capture :**
-<img width="624" height="300" alt="image" src="https://github.com/user-attachments/assets/5a30ade5-169b-49c8-a61a-95d67735bb38" />
+<img width="1212" height="677" alt="image" src="https://github.com/user-attachments/assets/f96bdc78-bc64-4669-86ef-f6a2e3c375a5" />
 
 ### 📕 Scénario 2 — HeavyBody (Écriture intensive)
 
