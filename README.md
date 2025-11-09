@@ -67,7 +67,7 @@ Le monitoring du benchmark est entièrement orchestré via Docker Compose.
 - 🧮 **InfluxDB** : stockage des résultats JMeter en temps réel
 
 📸 **Capture :**
-<img width="624" height="112" alt="image" src="https://github.com/user-attachments/assets/3e97aaa4-9e3e-42a5-a247-73ae3b9a7d0c" />
+<img width="1605" height="470" alt="image" src="https://github.com/user-attachments/assets/6e3a300a-b064-489a-9bdc-4cdbb6b7323f" />
 
 ---
 
